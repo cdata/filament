@@ -35,7 +35,10 @@ const static regex slashSlashCommentsRegex(R"regex([\t ]*\/\/.*)regex");
 // \*\/             stop the match at the first occurrence of '*' + '/'
 const static regex starCommentsRegex(R"regex([\t ]*\/\*[\w\W]*?\*\/)regex");
 
-const static regex emptyLinesRegex(R"regex(\n+)regex");
+// Empty lines:
+// (\n|\r\n)+       match 1 or more newlines (either linux or Windows-style)
+//                  The capture group will only capture a single newline sequence.
+const static regex emptyLinesRegex(R"regex((\n|\r\n)+)regex");
 
 // Indentation:
 // (^|\n)           match the beginning of the file, or a newline character (C++14 does not support
@@ -52,13 +55,14 @@ std::string minifyGlsl(const std::string& glsl, GlslMinifyOptions options) noexc
     }
 
     if (options & GlslMinifyOptions::STRIP_EMPTY_LINES) {
-        minified = regex_replace(minified, emptyLinesRegex, "\n");
+        // Replace the group of newlines with a single newline, which is in the first capture group.
+        minified = regex_replace(minified, emptyLinesRegex, "$1");
     }
 
     if (options & GlslMinifyOptions::STRIP_INDENTATION) {
-        // Use $1 here to insert whatever was captured in the first capture group, which will either
-        // be a newline or nothing at all (in the case of the first line).
-        // We do this to preserve newlines.
+        // Replace the indentation with whatever was captured in the first capture group, which will
+        // either be a newline or nothing at all (in the case of the first line).
+        // We do this to preserve newlines when stripping indentation.
         minified = regex_replace(minified, indentationRegex, "$1");
     }
 

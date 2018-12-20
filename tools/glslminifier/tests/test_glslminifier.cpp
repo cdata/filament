@@ -97,6 +97,12 @@ TEST_F(GlslminifierTest, RemoveBlankLines) {
     EXPECT_EQ(minifyGlsl(glsl, GlslMinifyOptions::STRIP_EMPTY_LINES), expected);
 }
 
+TEST_F(GlslminifierTest, RemoveBlankLinesWindows) {
+    std::string glsl = "line one\r\n\r\n\r\nline two";
+    std::string expected = "line one\r\nline two";
+    EXPECT_EQ(minifyGlsl(glsl, GlslMinifyOptions::STRIP_EMPTY_LINES), expected);
+}
+
 TEST_F(GlslminifierTest, RemoveIndentation) {
     std::string glsl = R"glsl(     #version 330
         void main() {
