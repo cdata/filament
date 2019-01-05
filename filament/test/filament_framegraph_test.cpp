@@ -96,7 +96,10 @@ TEST(FrameGraphTest, SimpleRenderAndPostProcessPasses) {
 
     fg.compile();
 
+    //fg.export_graphviz(utils::slog.d);
+
     fg.execute();
+
 
     EXPECT_TRUE(renderPassExecuted);
     EXPECT_TRUE(postProcessPassExecuted);
@@ -161,7 +164,11 @@ TEST(FrameGraphTest, SimplePassCulling) {
     EXPECT_TRUE(fg.isValid(culledPass.getData().input));
     EXPECT_TRUE(fg.isValid(culledPass.getData().output));
 
+    //fg.export_graphviz(utils::slog.d);
+
     fg.compile();
+
+    //fg.export_graphviz(utils::slog.d);
 
     fg.execute();
 
