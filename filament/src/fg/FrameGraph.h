@@ -17,6 +17,9 @@
 #ifndef TNT_FILAMENT_FRAMEGRAPH_H
 #define TNT_FILAMENT_FRAMEGRAPH_H
 
+
+#include "FrameGraphResourceHandle.h"
+
 #include <utils/Log.h>
 
 #include <vector>
@@ -37,51 +40,35 @@ class FrameGraphPassBase;
 class FrameGraphResource;
 class FrameGraphPassResources;
 
-
-struct ResourceID {
-    uint16_t index = 0;
-    uint16_t version = 0;
-};
-
-// ------------------------------------------------------------------------------------------------
-
-class FrameGraphResourceHandle {
-    static constexpr uint32_t INVALID = std::numeric_limits<uint32_t>::max();
-    uint32_t mHandle = INVALID;
-public:
-    FrameGraphResourceHandle() noexcept = default;
-    explicit FrameGraphResourceHandle(uint32_t handle) noexcept : mHandle(handle) { }
-    bool isValid() const noexcept { return mHandle != INVALID; }
-    uint32_t getHandle() const noexcept { return mHandle; }
-};
-
 // ------------------------------------------------------------------------------------------------
 
 class FrameGraphPassBase {
 public:
     // TODO: use something less heavy than a std::vector<>
-    using ResourceList = std::vector<ResourceID>;
+    using ResourceList = std::vector<FrameGraphResourceHandle>;
 
     FrameGraphPassBase(FrameGraphPassBase const&) = delete;
     FrameGraphPassBase& operator = (FrameGraphPassBase const&) = delete;
     virtual ~FrameGraphPassBase();
 
     const char* getName() const noexcept { return mName; }
+    uint32_t getId() const noexcept { return mId; }
+
+    // for FrameGraphBuilder
+    void read(FrameGraphResource const& resource);
+    void write(FrameGraphResource const& resource);
 
 protected:
-    explicit FrameGraphPassBase(const char* name) noexcept;
+    FrameGraphPassBase(const char* name, uint32_t id) noexcept;
 
 private:
     friend class FrameGraph;
     virtual void execute(FrameGraphPassResources const& resources) noexcept = 0;
-    ResourceList const& getReadResources() const noexcept { return mReads; }
-
-    friend class FrameGraphBuilder;
-    void read(FrameGraphResource const& resource);
-    void write(FrameGraphResource const& resource);
 
     // our name
     const char* mName = nullptr;
+    // a unique id (only for debugging)
+    uint32_t mId = 0;
     // count resources that have a reference to us, i.e. resources we're writing to
     uint32_t mRefCount = 0;
     // resources we're reading from
@@ -97,8 +84,8 @@ private:
 template <typename Data, typename Execute>
 class FrameGraphPass : public FrameGraphPassBase {
 public:
-    FrameGraphPass(const char* name, Execute&& execute) noexcept
-        : FrameGraphPassBase(name), mExecute(std::forward<Execute>(execute)) {
+    FrameGraphPass(const char* name, uint32_t id, Execute&& execute) noexcept
+        : FrameGraphPassBase(name, id), mExecute(std::forward<Execute>(execute)) {
     }
 
     Data const& getData() const noexcept { return mData; }
@@ -121,7 +108,7 @@ public:
         // TODO: descriptor for textures and render targets
     };
 
-    FrameGraphResource(const char* name, uint16_t id) noexcept : mName(name), mId{ id, 0 } {}
+    FrameGraphResource(const char* name, uint16_t index) noexcept : mName(name), mId{ index, 0 } {}
 
     // disallow copy ctor
     FrameGraphResource(FrameGraphResource const&) = delete;
@@ -145,7 +132,7 @@ private:
 
     // constants
     const char* mName = nullptr;
-    ResourceID mId;
+    FrameGraphResourceHandle mId;
 
     // set by the builder
     mutable std::vector<FrameGraphPassBase*> mWriters;
@@ -171,7 +158,13 @@ public:
     FrameGraphBuilder& operator = (FrameGraphBuilder const&) = delete;
 
     // create a resource
-    FrameGraphResourceHandle createTexture(const char* name, FrameGraphResource::TextureDesc const& desc) noexcept;
+    using CreateFlags = uint32_t;
+    static constexpr CreateFlags READ = 0x1;
+    static constexpr CreateFlags WRITE = 0x2;
+    FrameGraphResourceHandle createTexture(
+            const char* name,
+            CreateFlags flags,
+            FrameGraphResource::TextureDesc const& desc) noexcept;
 
     // read from a resource (i.e. add a reference to that resource)
     FrameGraphResourceHandle read(FrameGraphResourceHandle const& input /*, read-flags*/);
@@ -199,7 +192,8 @@ public:
         static_assert(sizeof(Execute) < 1024, "Execute() lambda is capturing too much data.");
 
         // create the FrameGraph pass (TODO: use special allocator)
-        auto* pass = new FrameGraphPass<Data, Execute>(name, std::forward<Execute>(execute));
+        const uint32_t id = (uint32_t)mFrameGraphPasses.size();
+        auto* pass = new FrameGraphPass<Data, Execute>(name, id, std::forward<Execute>(execute));
 
         FrameGraphBuilder builder(*this, pass);
 
@@ -225,18 +219,12 @@ public:
 private:
     friend class FrameGraphBuilder;
 
-    using ResourceID = filament::ResourceID;
-
     FrameGraphPassResources mResources;
 
     FrameGraphResource& createResource(const char* name);
-    FrameGraphResourceHandle createHandle(FrameGraphResource const& resource);
 
     // list of frame graph passes
     std::vector<std::unique_ptr<FrameGraphPassBase>> mFrameGraphPasses;
-
-    // indices into the resource registry
-    std::vector<ResourceID> mResourcesIds;
 
     // frame graph concrete resources
     std::vector<FrameGraphResource> mResourceRegistry;
