@@ -27,6 +27,7 @@
 #include <filament/Scene.h>
 #include <filament/Texture.h>
 #include <filament/IndirectLight.h>
+#include <filament/View.h>
 
 #include <utils/Path.h>
 #include <utils/EntityManager.h>
@@ -117,6 +118,8 @@ static void cleanup(Engine* engine, View* view, Scene* scene) {
 }
 
 static void setup(Engine* engine, View* view, Scene* scene) {
+    view->setClearColor(Color::toLinear<ACCURATE>(sRGBColorA(1.0f, 1.0f, 1.0f, 1.0f)));
+    view->setViewport({0,0,768,768});
     g_meshSet = std::make_unique<MeshAssimp>(*engine);
     for (auto& filename : g_filenames) {
         g_meshSet->addFromFile(filename, g_materialInstances, false);
@@ -129,7 +132,7 @@ static void setup(Engine* engine, View* view, Scene* scene) {
     float maxExtent = 0;
     maxExtent = std::max(g_meshSet->maxBound.x - g_meshSet->minBound.x, g_meshSet->maxBound.y - g_meshSet->minBound.y);
     maxExtent = std::max(maxExtent, g_meshSet->maxBound.z - g_meshSet->minBound.z);
-    float scaleFactor = 2.0f / maxExtent;
+    float scaleFactor = 2.325f / maxExtent;
 
     float3 center = -1 * (g_meshSet->maxBound + g_meshSet->minBound) / 2.0f;
     center.z -= 4.0f / scaleFactor;
@@ -148,12 +151,12 @@ static void setup(Engine* engine, View* view, Scene* scene) {
 
     g_light = EntityManager::get().create();
     LightManager::Builder(LightManager::Type::SUN)
-            .color(Color::toLinear<ACCURATE>(sRGBColor(0.98f, 0.92f, 0.89f)))
+            .color(Color::toLinear<ACCURATE>(sRGBColor(1.0f, 1.0f, 1.0f)))
             .intensity(110000)
-            .direction({ 0.7, -1, -0.8 })
+            .direction({ 0.0, -1, 0.0 })
             .sunAngularRadius(1.9f)
-            .castShadows(true)
             .build(*engine, g_light);
+
     scene->addEntity(g_light);
 }
 
@@ -175,7 +178,7 @@ int main(int argc, char* argv[]) {
     }
 
     FilamentApp& filamentApp = FilamentApp::get();
-    filamentApp.run(g_config, setup, cleanup);
+    filamentApp.run(g_config, setup, cleanup, nullptr, nullptr, nullptr, 768, 768);
 
     return 0;
 }
