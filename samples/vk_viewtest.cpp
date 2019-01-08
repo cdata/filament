@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
         engine->destroy(app.cam);
     };
 
-    FilamentApp::get().run(config, setup, cleanup);
+    FilamentApp::get().run(config, setup, cleanup, nullptr, nullptr, nullptr, 800, 800);
 
     return 0;
 }
