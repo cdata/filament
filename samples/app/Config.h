@@ -26,6 +26,9 @@ struct Config {
     std::string iblDirectory;
     float scale = 1.0f;
     bool splitView = false;
+    int width = 768;
+    int height = 768;
+    std::string outputPath;
     filament::Engine::Backend backend = filament::Engine::Backend::OPENGL;
 };
 
